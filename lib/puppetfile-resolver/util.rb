@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'open3'
 
 module PuppetfileResolver
   module Util
@@ -42,6 +43,23 @@ module PuppetfileResolver
 
       Net::HTTP.start(*start_args, http_options) { |http| return http.request(Net::HTTP::Get.new(uri)) }
       nil
+    end
+
+    # @summary runs the command on the shell
+    # @param cmd [Array] an array of command and args
+    # @returns [Array] the result of running the comand and the process 
+    # @example run_command(['git', '--version'])
+    def self.run_command(cmd)
+      out = Open3.capture3(*cmd)
+    end
+
+    # @summary checks if git is installed and on the path
+    # @returns [Boolean] true if git is found in the path
+    def self.has_git?
+      out = Open3.capture3(*['git', '--version'])
+      true
+    rescue Errno::ENOENT 
+      false
     end
   end
 end

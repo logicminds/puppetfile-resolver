@@ -10,8 +10,9 @@ require 'puppetfile-resolver/spec_searchers/git/gclone'
 module PuppetfileResolver
   module SpecSearchers
     module Git
+
       def self.find_all(puppetfile_module, dependency, cache, resolver_ui, config)
-        dep_id = ::PuppetfileResolver::SpecSearchers::Common.dependency_cache_id(self, dependency)
+        dep_id = ::PuppetfileResolver::SpecSearchers::Common._(self, dependency)
         # Has the information been cached?
         return cache.load(dep_id) if cache.exist?(dep_id)
 

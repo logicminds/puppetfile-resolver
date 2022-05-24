@@ -5,19 +5,22 @@ require 'English'
 require 'puppetfile-resolver/util'
 require 'puppetfile-resolver/spec_searchers/common'
 require 'puppetfile-resolver/spec_searchers/git_configuration'
+require 'puppetfile-resolver/util'
 require 'uri'
+
 module PuppetfileResolver
   module SpecSearchers
     module Git
       module GClone
-        CLONE_CMD = 'git clone --bare --depth=1 --single-branch'
         # @summary clones the remote url and reads the metadata file
         # @returns [String] the content of the metadata file
         def self.metadata(puppetfile_module, resolver_ui, config)
           repo_url = puppetfile_module.remote
-
+        
           return nil if repo_url.nil?
           return nil unless valid_http_url?(repo_url)
+          return nil unless PuppetfileResolver::Util.has_git?
+
           metadata_file = 'metadata.json'
 
           ref = puppetfile_module.ref ||
@@ -38,16 +41,18 @@ module PuppetfileResolver
         # @param file [String] the file you wish to read
         # @returns [String] the content of the file
         def self.clone_and_read_file(url, ref, file, config)
+          clone_cmd = ['git','clone','--bare','--depth=1','--single-branch']
+          proxy = ''
+          err_msg = ''
+          if config.git.proxy
+            err_msg += " with proxy #{config.git.proxy}: "
+            proxy = "--config \"http.proxy=#{config.git.proxy}\" --config \"https.proxy=#{config.proxy}\""
+          end
           # cloning is a last resort if for some reason we cannot
           # remotely get via ls-remote
           Dir.mktmpdir do |dir|
-            err_msg = ''
-            proxy = ''
-            if config.git.proxy
-              err_msg += " with proxy #{config.git.proxy}: "
-              proxy = "--config \"http.proxy=#{config.git.proxy}\" --config \"https.proxy=#{config.proxy}\""
-            end
             branch = ref == 'HEAD' ? '' : "--branch=#{ref}"
+            clone_cmd.push(branch, url, dir, proxy)
             out, successful = run_command("#{CLONE_CMD} #{branch} #{url} #{dir} #{proxy}", silent: true)
             err_msg += out
             raise err_msg unless successful
@@ -67,6 +72,7 @@ module PuppetfileResolver
           out_args = silent ? '2>&1 > /dev/null' : '2>&1'
           out = `#{cmd} #{out_args}`
           [out, $CHILD_STATUS.success?]
+          
         end
 
         def self.valid_http_url?(url)
